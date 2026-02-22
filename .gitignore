@@ -1,1 +1,11 @@
-john-bleeding-jumbo/run/rockyou.txt
+venv/
+app/venv/
+__pycache__/
+app/__pycache__/
+*.pyc
+app/uploads/
+app/.env
+app/cert.pem
+app/key.pem
+# Already pushed john-bleeding-jumbo, but keeping ignore for future additions if needed
+# john-bleeding-jumbo/ 
