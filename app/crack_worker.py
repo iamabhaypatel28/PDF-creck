@@ -8,6 +8,7 @@ from database import get_conn, get_cursor
 # John the Ripper configuration — test-run to find best working binary
 _LOCAL_RUN_DIR = os.getenv("JOHN_RUN_DIR", "/app/john-bleeding-jumbo/run")
 _LOCAL_JOHN_BIN = os.path.join(_LOCAL_RUN_DIR, "john")
+_LOCAL_PDF2JOHN = os.path.join(_LOCAL_RUN_DIR, "pdf2john.pl")
 _SYSTEM_JOHN_BIN = shutil.which("john") or "/usr/sbin/john"
 
 def _test_binary(path: str) -> bool:
@@ -25,14 +26,19 @@ def _test_binary(path: str) -> bool:
 if os.path.isfile(_LOCAL_JOHN_BIN) and os.access(_LOCAL_JOHN_BIN, os.X_OK) and _test_binary(_LOCAL_JOHN_BIN):
     JOHN_BIN = _LOCAL_JOHN_BIN
     JOHN_DIR = _LOCAL_RUN_DIR
-    PDF2JOHN = os.path.join(JOHN_DIR, "pdf2john.pl")
     print(f"[JTR] Using bleeding-jumbo binary: {JOHN_BIN}")
 else:
     # System john — compatible with Docker environment
     JOHN_BIN = _SYSTEM_JOHN_BIN
     JOHN_DIR = os.path.dirname(JOHN_BIN) if JOHN_BIN else "/usr/sbin"
-    PDF2JOHN = "/usr/share/john/pdf2john.pl"
     print(f"[JTR] Falling back to system john: {JOHN_BIN}")
+
+# pdf2john.pl is a Perl script — always prefer bleeding-jumbo version (no GLIBC issues)
+# Fall back to system path only if bleeding-jumbo script is missing
+if os.path.isfile(_LOCAL_PDF2JOHN):
+    PDF2JOHN = _LOCAL_PDF2JOHN
+else:
+    PDF2JOHN = "/usr/share/john/pdf2john.pl"
 
 print(f"[JTR] Using pdf2john: {PDF2JOHN}")
 WORDLIST = os.path.join(_LOCAL_RUN_DIR, "password.lst") if os.path.isdir(_LOCAL_RUN_DIR) else "/usr/share/john/password.lst"
