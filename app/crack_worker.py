@@ -5,11 +5,24 @@ import re
 import threading
 from database import get_conn, get_cursor
 
-JOHN_DIR = "/home/abhay/Work p/pdf creck/john-bleeding-jumbo/run"
-JOHN_BIN = os.path.join(JOHN_DIR, "john")
-PDF2JOHN = os.path.join(JOHN_DIR, "pdf2john.pl")
-WORDLIST = os.path.join(JOHN_DIR, "password.lst")
-ROCKYOU = os.path.join(JOHN_DIR, "rockyou.txt")
+# John the Ripper configuration — auto-detect best available binary
+_LOCAL_RUN_DIR = os.getenv("JOHN_RUN_DIR", "/app/john-bleeding-jumbo/run")
+_LOCAL_JOHN_BIN = os.path.join(_LOCAL_RUN_DIR, "john")
+_SYSTEM_JOHN_BIN = shutil.which("john") or "/usr/sbin/john"
+
+# Use local bleeding-jumbo if available and executable, else fall back to system john
+if os.path.isfile(_LOCAL_JOHN_BIN) and os.access(_LOCAL_JOHN_BIN, os.X_OK):
+    JOHN_BIN = _LOCAL_JOHN_BIN
+    JOHN_DIR = _LOCAL_RUN_DIR
+    PDF2JOHN = os.path.join(JOHN_DIR, "pdf2john.pl")
+else:
+    # System john — pdf2john.pl is in /usr/share/john/
+    JOHN_BIN = _SYSTEM_JOHN_BIN
+    JOHN_DIR = os.path.dirname(JOHN_BIN)
+    PDF2JOHN = "/usr/share/john/pdf2john.pl"
+
+WORDLIST = os.path.join(_LOCAL_RUN_DIR, "password.lst") if os.path.isdir(_LOCAL_RUN_DIR) else "/usr/share/john/password.lst"
+ROCKYOU = os.path.join(_LOCAL_RUN_DIR, "rockyou.txt")
 
 
 def update_job(job_id: int, status: str, password: str = None):
