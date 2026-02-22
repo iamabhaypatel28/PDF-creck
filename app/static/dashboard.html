@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DECRYPT_CONTROL // PDF CRACKER</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <style>
+        :root {
+            --primary: #00ff41;
+            --primary-dim: rgba(0, 255, 65, 0.15);
+            --bg: #000;
+            --surface: #0a0a0a;
+            --card: #0d0d0d;
+            --border: rgba(0, 255, 65, 0.3);
+            --accent: #00ff41;
+            --text: #00ff41;
+            --muted: rgba(0, 255, 65, 0.5);
+            --danger: #ff5f56;
+            --warning: #ffbd2e;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Fira Code', monospace;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Grid Overlay */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                linear-gradient(rgba(0, 255, 65, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 65, 0.03) 1px, transparent 1px);
+            background-size: 30px 30px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Scanlines */
+        body::after {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%);
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 100;
+            opacity: 0.3;
+        }
+
+        header {
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 110;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            font-weight: 900;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px var(--primary);
+        }
+
+        .logo span {
+            font-size: 1.5rem;
+            color: #fff;
+            text-shadow: 0 0 10px #fff;
+            display: inline-block;
+            animation: floating 3s ease-in-out infinite;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .status-id {
+            font-size: 0.75rem;
+            background: var(--primary-dim);
+            padding: 4px 8px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+        }
+
+        .logout-btn {
+            background: transparent;
+            border: 1px solid var(--danger);
+            color: var(--danger);
+            padding: 0.4rem 0.8rem;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: var(--danger);
+            color: #000;
+        }
+
+        main {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 2rem;
+            padding: 2rem;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-title::before {
+            content: "[ ";
+        }
+
+        .section-title::after {
+            content: " ]";
+        }
+
+        /* Left Column: Tools */
+        .tools-column {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .terminal-card {
+            background: #050505;
+            border: 1px solid var(--border);
+            position: relative;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .card-header {
+            background: #111;
+            padding: 0.5rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.7rem;
+            display: flex;
+            justify-content: space-between;
+            opacity: 0.8;
+        }
+
+        .drop-zone {
+            padding: 2.5rem 1.5rem;
+            border: 1px dashed var(--muted);
+            margin: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: rgba(0, 255, 65, 0.02);
+        }
+
+        .drop-zone:hover,
+        .drop-zone.drag-over {
+            background: var(--primary-dim);
+            border-color: var(--primary);
+            box-shadow: 0 0 15px var(--primary-dim);
+        }
+
+        .drop-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            filter: grayscale(1) invert(0.5);
+        }
+
+        .drop-zone h3 {
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-btn {
+            width: calc(100% - 3rem);
+            margin: 0 1.5rem 1.5rem;
+            background: var(--primary);
+            color: #000;
+            border: none;
+            padding: 0.8rem;
+            font-family: inherit;
+            font-weight: 900;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .upload-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* Right Column: Console Output */
+        .console-column {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .console-window {
+            background: #000;
+            border: 1px solid var(--border);
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 500px;
+        }
+
+        .table-container {
+            padding: 0;
+            flex-grow: 1;
+            overflow: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        thead th {
+            background: #111;
+            text-align: left;
+            padding: 0.8rem 1.2rem;
+            color: var(--muted);
+            font-size: 0.7rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 1rem 1.2rem;
+            border-bottom: 1px solid rgba(0, 255, 65, 0.1);
+            vertical-align: middle;
+        }
+
+        .job-row:hover {
+            background: rgba(0, 255, 65, 0.05);
+        }
+
+        /* Status indicators */
+        .status-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 2px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .status-pending {
+            color: var(--muted);
+            border: 1px solid var(--muted);
+        }
+
+        .status-cracking {
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            animation: blink 1s infinite;
+        }
+
+        .status-cracked {
+            background: var(--primary);
+            color: #000;
+        }
+
+        .status-failed {
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+
+        .password-display {
+            background: rgba(0, 255, 65, 0.1);
+            padding: 4px 10px;
+            border: 1px solid var(--border);
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #fff;
+            text-shadow: 0 0 10px var(--primary);
+        }
+
+        .copy-btn {
+            background: none;
+            border: none;
+            color: var(--primary);
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 200;
+            background: #000;
+            border: 1px solid var(--primary);
+            padding: 1rem;
+            font-size: 0.8rem;
+            transform: translateY(200%);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .toast.show {
+            transform: translateY(0);
+        }
+
+        .empty-prompt {
+            padding: 4rem;
+            text-align: center;
+            color: var(--muted);
+            opacity: 0.3;
+            font-size: 2rem;
+        }
+
+        .cyber-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: radial-gradient(circle at 50% 50%, #051a05 0%, #000 70%);
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+                text-shadow: 0 0 10px var(--primary);
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+        }
+
+        @keyframes floating {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .hacker-emoji-side {
+            position: absolute;
+            right: 2rem;
+            bottom: 2rem;
+            font-size: 6rem;
+            opacity: 0.2;
+            pointer-events: none;
+            animation: floating 4s ease-in-out infinite;
+        }
+
+        @media (max-width: 1024px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+
+            .tools-column {
+                order: 2;
+            }
+
+            .console-column {
+                order: 1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            header {
+                flex-direction: column;
+                gap: 1rem;
+                padding: 1rem;
+                text-align: center;
+            }
+
+            .logo {
+                font-size: 0.9rem;
+            }
+
+            .user-info {
+                flex-direction: column;
+                width: 100%;
+                gap: 0.5rem;
+            }
+
+            .logout-btn {
+                width: 100%;
+            }
+
+            main {
+                padding: 1rem;
+                gap: 1rem;
+            }
+
+            .section-title {
+                font-size: 0.7rem;
+            }
+
+            .table-container {
+                overflow-x: auto;
+            }
+
+            table {
+                min-width: 500px;
+            }
+
+            .hacker-emoji-side {
+                display: none;
+            }
+        }
+
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="cyber-bg"></div>
+    <canvas id="particle-canvas"></canvas>
+
+    <header>
+        <div class="logo"><span>🥷</span> CRACK_COMMAND_CENTER // V1.0</div>
+        <div class="user-info">
+            <span class="status-id">> UID: <span id="userEmail">...</span></span>
+            <button class="logout-btn" onclick="logout()">TERMINATE SESSION</button>
+        </div>
+    </header>
+
+    <main>
+        <div class="tools-column">
+            <div>
+                <p class="section-title">FILE_INJECTION</p>
+                <div class="terminal-card">
+                    <div class="card-header">
+                        <span>UPLOAD_MODULE.EXE</span>
+                        <span>READY</span>
+                    </div>
+                    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                        <div class="drop-icon">💾</div>
+                        <h3>INPUT TARGET PDF</h3>
+                        <div style="font-size: 0.7rem; opacity: 0.5;">[ MAX_LOAD: 5 FILES ]</div>
+                        <div id="selectedFile" style="margin-top:1rem; font-size:0.75rem; color: #fff;"></div>
+                    </div>
+                    <input type="file" id="fileInput" style="display:none" accept=".pdf"
+                        onchange="onFileSelected(this)" />
+                    <button class="upload-btn" id="uploadBtn" onclick="uploadPDF()" disabled>
+                        INITIATE DECRYPTION
+                    </button>
+                </div>
+            </div>
+
+            <div class="terminal-card" style="padding: 1rem; font-size: 0.7rem; color: var(--muted);">
+                <div class="card-header" style="margin: -1rem -1rem 1rem; border-top: none;">SYSLOG_DAEMON</div>
+                <div id="sysLog">
+                    [OK] SECURE_SOCKET_ESTABLISHED<br>
+                    [OK] DECRYPTOR_MODULE_LOADED<br>
+                    [OK] WAITING_FOR_INPUT...<br>
+                </div>
+            </div>
+        </div>
+
+        <div class="console-column">
+            <p class="section-title">DECRYPTION_CONSOLE</p>
+            <div class="console-window">
+                <div class="card-header">
+                    <span>ACTIVE_PROCESSES</span>
+                    <span id="jobCount">0_FOUND</span>
+                </div>
+                <div class="table-container" id="tableContainer">
+                    <div id="emptyState" class="empty-prompt">
+                        NO_HASHES_LOADED
+                    </div>
+                    <table id="jobsTable" style="display:none">
+                        <thead>
+                            <tr>
+                                <th>TARGET_FILE</th>
+                                <th>PROCESS_STATUS</th>
+                                <th>KEY_RECOVERED</th>
+                                <th>TIMESTAMP</th>
+                            </tr>
+                        </thead>
+                        <tbody id="jobsTbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="hacker-emoji-side">🥷</div>
+    <div class="toast" id="toast"></div>
+
+    <script>
+        let token = localStorage.getItem('pdf_cracker_token');
+        if (!token) window.location.href = '/';
+
+        const sysLog = document.getElementById('sysLog');
+        function addLog(msg) {
+            const time = new Date().toLocaleTimeString();
+            sysLog.innerHTML += `[${time}] ${msg}<br>`;
+            sysLog.scrollTop = sysLog.scrollHeight;
+        }
+
+        function logout() {
+            localStorage.removeItem('pdf_cracker_token');
+            window.location.href = '/';
+        }
+
+        function parseJWT(t) {
+            try { return JSON.parse(atob(t.split('.')[1])); } catch { return null; }
+        }
+
+        function init() {
+            const payload = parseJWT(token);
+            if (payload) document.getElementById('userEmail').textContent = payload.email || 'UNKNOWN';
+            loadJobs();
+            setInterval(loadJobs, 5000);
+            addLog("SYSTEM_READY");
+        }
+
+        // Drag & Drop
+        const dropZone = document.getElementById('dropZone');
+        dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+        dropZone.addEventListener('drop', e => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].name.toLowerCase().endsWith('.pdf')) {
+                setFile(files[0]);
+            }
+        });
+
+        let selectedFile = null;
+        function onFileSelected(input) { if (input.files.length > 0) setFile(input.files[0]); }
+
+        function setFile(file) {
+            selectedFile = file;
+            document.getElementById('selectedFile').textContent = `> TARGET: ${file.name.toUpperCase()}`;
+            document.getElementById('uploadBtn').disabled = false;
+            addLog(`TARGET_LOADED: ${file.name}`);
+        }
+
+        async function uploadPDF() {
+            if (!selectedFile) return;
+            const btn = document.getElementById('uploadBtn');
+            btn.disabled = true;
+            btn.textContent = 'INJECTING...';
+            addLog("INJECTING_HASH_TO_JTR...");
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            try {
+                const res = await fetch('/jobs/upload', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token },
+                    body: formData,
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast('>>> INJECTION_SUCCESSFUL');
+                    addLog("REMOTE_SERVER_CONFIRMED_JOB");
+                    selectedFile = null;
+                    document.getElementById('selectedFile').textContent = '';
+                    document.getElementById('fileInput').value = '';
+                    loadJobs();
+                } else {
+                    showToast('>>> ERROR: ' + (data.detail || 'FAIL'));
+                    addLog(`ERROR: ${data.detail}`);
+                }
+            } catch (e) {
+                showToast('>>> NETWORK_FAILURE');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'INITIATE DECRYPTION';
+            }
+        }
+
+        async function loadJobs() {
+            try {
+                const res = await fetch('/jobs/', { headers: { 'Authorization': 'Bearer ' + token } });
+                if (res.status === 401) logout();
+                const jobs = await res.json();
+                renderJobs(jobs);
+            } catch (e) { }
+        }
+
+        function renderJobs(jobs) {
+            const empty = document.getElementById('emptyState');
+            const table = document.getElementById('jobsTable');
+            const tbody = document.getElementById('jobsTbody');
+            document.getElementById('jobCount').textContent = `${jobs.length}_FOUND`;
+
+            if (jobs.length === 0) {
+                empty.style.display = 'block';
+                table.style.display = 'none';
+                return;
+            }
+
+            empty.style.display = 'none';
+            table.style.display = 'table';
+
+            tbody.innerHTML = jobs.map(j => {
+                let statusClass = 'status-pending';
+                let label = j.status.toUpperCase();
+                if (j.status.includes('crack')) statusClass = 'status-cracking';
+                if (j.status === 'cracked') { statusClass = 'status-cracked'; label = 'RECOVERED'; }
+                if (j.status === 'failed') statusClass = 'status-failed';
+
+                const pwd = j.cracked_password
+                    ? `<div class="password-display">${j.cracked_password} <button class="copy-btn" onclick="copyPwd('${j.cracked_password}')">📋</button></div>`
+                    : `<span style="opacity:0.4">DECRYPTING...</span>`;
+
+                return `<tr class="job-row">
+          <td>> ${j.original_name}</td>
+          <td><span class="status-tag ${statusClass}">${label}</span></td>
+          <td>${pwd}</td>
+          <td style="opacity:0.5; font-size:0.7rem">${j.created_at.split(' ')[1]}</td>
+        </tr>`;
+            }).join('');
+        }
+
+        function copyPwd(pwd) {
+            navigator.clipboard.writeText(pwd).then(() => showToast('>>> KEY_COPIED_TO_CLIPBOARD'));
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        window.onload = init;
+
+        // Particle Network Effect (Hacker Dots)
+        const pCanvas = document.getElementById('particle-canvas');
+        const pCtx = pCanvas.getContext('2d');
+        let particles = [];
+        const mouse = { x: null, y: null, radius: 250 };
+
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * pCanvas.width;
+                this.y = Math.random() * pCanvas.height;
+                this.size = Math.random() * 2 + 0.5;
+                this.speedX = Math.random() * 1.2 - 0.6;
+                this.speedY = Math.random() * 1.2 - 0.6;
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+
+                if (this.x > pCanvas.width) this.x = 0;
+                else if (this.x < 0) this.x = pCanvas.width;
+                if (this.y > pCanvas.height) this.y = 0;
+                else if (this.y < 0) this.y = pCanvas.height;
+
+                const dx = mouse.x - this.x;
+                const dy = mouse.y - this.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < mouse.radius) {
+                    const force = (mouse.radius - distance) / mouse.radius;
+                    if (mouse.x < this.x && this.x < pCanvas.width - this.size * 10) this.x += 2 * force;
+                    if (mouse.x > this.x && this.x > this.size * 10) this.x -= 2 * force;
+                    if (mouse.y < this.y && this.y < pCanvas.height - this.size * 10) this.y += 2 * force;
+                    if (mouse.y > this.y && this.y > this.size * 10) this.y -= 2 * force;
+                }
+            }
+            draw() {
+                pCtx.fillStyle = 'rgba(0, 255, 65, 0.6)';
+                pCtx.beginPath();
+                pCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                pCtx.fill();
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            // Higher density
+            const numberOfParticles = (pCanvas.width * pCanvas.height) / 8000;
+            for (let i = 0; i < numberOfParticles; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function animateParticles() {
+            pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+
+                for (let j = i; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    // Longer connections
+                    if (distance < 150) {
+                        pCtx.strokeStyle = `rgba(0, 255, 65, ${0.6 - distance / 300})`;
+                        pCtx.lineWidth = 0.5;
+                        pCtx.beginPath();
+                        pCtx.moveTo(particles[i].x, particles[i].y);
+                        pCtx.lineTo(particles[j].x, particles[j].y);
+                        pCtx.stroke();
+                    }
+                }
+            }
+            requestAnimationFrame(animateParticles);
+        }
+
+        window.addEventListener('resize', () => {
+            pCanvas.width = window.innerWidth;
+            pCanvas.height = window.innerHeight;
+            initParticles();
+        });
+
+        pCanvas.width = window.innerWidth;
+        pCanvas.height = window.innerHeight;
+        initParticles();
+        animateParticles();
+    </script>
+</body>
+
+</html>

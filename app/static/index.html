@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SYSTEM ACCESS // PDF CRACKER</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <style>
+        :root {
+            --primary: #00ff41;
+            --primary-dim: rgba(0, 255, 65, 0.2);
+            --bg: #000;
+            --terminal-header: #1a1a1a;
+            --text-glow: 0 0 10px rgba(0, 255, 65, 0.8);
+            --border-neon: 0 0 15px rgba(0, 255, 65, 0.4);
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Fira Code', monospace;
+            background: var(--bg);
+            color: var(--primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* Matrix Rain Canvas */
+        #matrix-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.15;
+        }
+
+        /* Scanline effect */
+        body::after {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 10;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        .container {
+            position: relative;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            width: 100%;
+            max-width: 1100px;
+            padding: 2rem;
+        }
+
+        /* Hacker Avatar Side */
+        .hacker-side {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            animation: glitch-anim 5s infinite, floating 3s ease-in-out infinite;
+        }
+
+        @keyframes glitch-anim {
+            0% {
+                text-shadow: none;
+            }
+
+            2% {
+                text-shadow: 2px 0 red, -2px 0 blue;
+            }
+
+            4% {
+                text-shadow: -2px 0 red, 2px 0 blue;
+            }
+
+            5% {
+                text-shadow: none;
+            }
+
+            100% {
+                text-shadow: none;
+            }
+        }
+
+        @keyframes floating {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .avatar-wrapper {
+            width: 200px;
+            height: 200px;
+            margin-bottom: 2.5rem;
+            position: relative;
+            z-index: 5;
+            filter: drop-shadow(0 0 20px var(--primary));
+        }
+
+        .mascot-svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .eye-ball {
+            fill: #000;
+        }
+
+        .pupil {
+            fill: var(--primary);
+        }
+
+        .mascot-head {
+            fill: rgba(0, 255, 65, 0.05);
+            stroke: var(--primary);
+            stroke-width: 2;
+        }
+
+        .avatar-wrapper::before {
+            content: "{ SCANNING_USER... }";
+            position: absolute;
+            bottom: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.9rem;
+            opacity: 0.7;
+            letter-spacing: 3px;
+            width: 100%;
+        }
+
+        /* Terminal Console */
+        .terminal-card {
+            flex: 1;
+            max-width: 480px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid var(--primary);
+            border-radius: 4px;
+            box-shadow: var(--border-neon);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .terminal-header {
+            background: var(--terminal-header);
+            padding: 0.5rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border-bottom: 1px solid rgba(0, 255, 65, 0.3);
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .dot-red {
+            background: #ff5f56;
+        }
+
+        .dot-yellow {
+            background: #ffbd2e;
+        }
+
+        .dot-green {
+            background: #27c93f;
+        }
+
+        .terminal-title {
+            font-size: 0.7rem;
+            color: var(--primary);
+            flex-grow: 1;
+            text-align: center;
+            font-weight: 700;
+            opacity: 0.7;
+        }
+
+        .terminal-content {
+            padding: 2.5rem;
+        }
+
+        .brand-h1 {
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+            text-shadow: var(--text-glow);
+        }
+
+        .brand-p {
+            color: rgba(0, 255, 65, 0.6);
+            font-size: 0.8rem;
+            margin-bottom: 2rem;
+            border-left: 2px solid var(--primary);
+            padding-left: 10px;
+        }
+
+        .input-wrapper {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.75rem;
+            margin-bottom: 0.5rem;
+            opacity: 0.8;
+        }
+
+        .input-field {
+            width: 100%;
+            background: #000;
+            border: 1px solid var(--primary-dim);
+            border-radius: 0;
+            padding: 1rem;
+            color: var(--primary);
+            font-family: inherit;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .input-field:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+            padding-left: 1.5rem;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 1rem;
+            background: var(--primary);
+            color: #000;
+            border: none;
+            font-family: inherit;
+            font-size: 1rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            cursor: pointer;
+            letter-spacing: 2px;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .btn:hover {
+            background: transparent;
+            color: var(--primary);
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.5) inset, 0 0 10px var(--primary);
+        }
+
+        /* Typing effect mimic */
+        .typing::after {
+            content: "|";
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            50% {
+                opacity: 0;
+            }
+        }
+
+        .error-msg {
+            display: none;
+            margin-top: 1rem;
+            color: #ff5f56;
+            font-size: 0.8rem;
+            padding: 0.5rem;
+            border: 1px solid #ff5f56;
+        }
+
+        .error-msg.show {
+            display: block;
+        }
+
+        /* Responsiveness */
+        @media (max-width: 900px) {
+            .container {
+                flex-direction: column;
+                gap: 4rem;
+                padding: 2rem 1rem;
+                overflow-y: visible;
+                min-height: 100vh;
+                justify-content: flex-start;
+            }
+
+            body {
+                overflow-y: auto;
+                display: block;
+            }
+
+            .hacker-side {
+                margin-top: 3rem;
+            }
+
+            .avatar-wrapper {
+                width: 160px;
+                height: 160px;
+            }
+
+            .terminal-card {
+                width: 100%;
+                max-width: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .brand-h1 {
+                font-size: 1.5rem;
+            }
+
+            .brand-p {
+                font-size: 0.75rem;
+            }
+
+            .terminal-content {
+                padding: 1.5rem;
+            }
+
+            .avatar-wrapper {
+                width: 120px;
+                height: 120px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="matrix-canvas"></canvas>
+    <canvas id="particle-canvas"></canvas>
+
+    <style>
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+            pointer-events: none;
+        }
+    </style>
+
+    <div class="container">
+        <div class="hacker-side">
+            <div class="avatar-wrapper" id="mascot-container">
+                <svg viewBox="0 0 100 100" class="mascot-svg">
+                    <!-- Head Outer -->
+                    <path class="mascot-head" d="M20,40 Q20,10 50,10 Q80,10 80,40 L80,70 Q80,90 50,90 Q20,90 20,70 Z" />
+                    <!-- Head Detail -->
+                    <path d="M30,20 Q50,15 70,20" fill="none" stroke="var(--primary)" stroke-width="1" opacity="0.5" />
+                    <!-- Left Eye -->
+                    <g class="eye" id="eye-l">
+                        <circle class="eye-ball" cx="38" cy="45" r="8" />
+                        <circle class="pupil" id="pupil-l" cx="38" cy="45" r="3" />
+                    </g>
+                    <!-- Right Eye -->
+                    <g class="eye" id="eye-r">
+                        <circle class="eye-ball" cx="62" cy="45" r="8" />
+                        <circle class="pupil" id="pupil-r" cx="62" cy="45" r="3" />
+                    </g>
+                    <!-- Mouth/Data port -->
+                    <rect x="40" y="70" width="20" height="4" fill="var(--primary-dim)" />
+                    <rect x="42" y="72" width="16" height="1" fill="var(--primary)" />
+                </svg>
+            </div>
+            <h1 style="font-size: 3rem;">CYBER_SENTINEL</h1>
+            <p style="font-size: 1.2rem; opacity: 0.6;">[ WATCHING ALL_TRAFFIC ]</p>
+        </div>
+
+        <div class="terminal-card">
+            <div class="terminal-header">
+                <div class="dot dot-red"></div>
+                <div class="dot dot-yellow"></div>
+                <div class="dot dot-green"></div>
+                <div class="terminal-title">AUTH_GATE // LOCALHOST</div>
+            </div>
+            <div class="terminal-content">
+                <h1 class="brand-h1 typing">PDF_STRIKE v1.0</h1>
+                <p class="brand-p">> Cranking hashes through JTR clusters...</p>
+
+                <div class="input-wrapper">
+                    <label>> IDENTIFY USER_ID (EMAIL)</label>
+                    <input type="email" id="email" class="input-field" placeholder="root@secure_net"
+                        autocomplete="email" />
+                </div>
+
+                <button class="btn" id="loginBtn" onclick="requestLogin()">
+                    EXECUTE INJECTION
+                </button>
+
+                <div class="error-msg" id="errorMsg"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Matrix Rain Animation
+        const canvas = document.getElementById('matrix-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        const charSet = '01ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$%^&*()_+-=[]{}|;:,.<>?';
+        const fontSize = 16;
+        let columns = canvas.width / fontSize;
+        const drops = [];
+
+        for (let x = 0; x < columns; x++) drops[x] = 1;
+
+        function draw() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#0F0';
+            ctx.font = fontSize + 'px monospace';
+
+            for (let i = 0; i < drops.length; i++) {
+                const text = charSet.charAt(Math.floor(Math.random() * charSet.length));
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+        }
+        setInterval(draw, 33);
+
+        // Eye-tracking Logic
+        const pupils = [
+            { el: document.getElementById('pupil-l'), cx: 38, cy: 45 },
+            { el: document.getElementById('pupil-r'), cx: 62, cy: 45 }
+        ];
+
+        document.addEventListener('mousemove', (e) => {
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+
+            pupils.forEach(pupil => {
+                const rect = pupil.el.getBoundingClientRect();
+                const pupilPosX = rect.left + rect.width / 2;
+                const pupilPosY = rect.top + rect.height / 2;
+
+                const angle = Math.atan2(mouseY - pupilPosY, mouseX - pupilPosX);
+                const distance = Math.min(3, Math.hypot(mouseX - pupilPosX, mouseY - pupilPosY) / 50);
+
+                const tx = Math.cos(angle) * distance;
+                const ty = Math.sin(angle) * distance;
+
+                pupil.el.setAttribute('transform', `translate(${tx}, ${ty})`);
+            });
+        });
+
+        // Login Logic
+        async function requestLogin() {
+            const email = document.getElementById('email').value.trim();
+            if (!email) {
+                showError('ERR: MISSING_USER_ID');
+                return;
+            }
+
+            const btn = document.getElementById('loginBtn');
+            btn.textContent = 'CONNECTING...';
+            btn.disabled = true;
+            hideError();
+
+            try {
+                const res = await fetch('/auth/request-login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email }),
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    localStorage.setItem('pdf_cracker_token', data.token);
+                    btn.textContent = 'ACCESS GRANTED';
+                    setTimeout(() => {
+                        window.location.href = '/dashboard';
+                    }, 800);
+                } else {
+                    showError('ERR: ' + (data.detail || 'CONNECTION_FAIL'));
+                }
+            } catch (e) {
+                showError('ERR: SERVER_UNREACHABLE');
+            } finally {
+                if (!localStorage.getItem('pdf_cracker_token')) {
+                    btn.textContent = 'EXECUTE INJECTION';
+                    btn.disabled = false;
+                }
+            }
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('errorMsg');
+            el.textContent = msg;
+            el.classList.add('show');
+        }
+
+        function hideError() {
+            document.getElementById('errorMsg').classList.remove('show');
+        }
+
+        // Particle Network Effect
+        const pCanvas = document.getElementById('particle-canvas');
+        const pCtx = pCanvas.getContext('2d');
+        let particles = [];
+        const mouse = { x: null, y: null, radius: 250 };
+
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * pCanvas.width;
+                this.y = Math.random() * pCanvas.height;
+                this.size = Math.random() * 2.5 + 1;
+                this.speedX = Math.random() * 1.5 - 0.75;
+                this.speedY = Math.random() * 1.5 - 0.75;
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+
+                if (this.x > pCanvas.width) this.x = 0;
+                else if (this.x < 0) this.x = pCanvas.width;
+                if (this.y > pCanvas.height) this.y = 0;
+                else if (this.y < 0) this.y = pCanvas.height;
+
+                // Mouse interaction - Stronger push
+                const dx = mouse.x - this.x;
+                const dy = mouse.y - this.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < mouse.radius) {
+                    const force = (mouse.radius - distance) / mouse.radius;
+                    if (mouse.x < this.x && this.x < pCanvas.width - this.size * 10) this.x += 3 * force;
+                    if (mouse.x > this.x && this.x > this.size * 10) this.x -= 3 * force;
+                    if (mouse.y < this.y && this.y < pCanvas.height - this.size * 10) this.y += 3 * force;
+                    if (mouse.y > this.y && this.y > this.size * 10) this.y -= 3 * force;
+                }
+            }
+            draw() {
+                pCtx.fillStyle = 'rgba(0, 255, 65, 0.7)';
+                pCtx.beginPath();
+                pCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                pCtx.fill();
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            // Higher density
+            const numberOfParticles = (pCanvas.width * pCanvas.height) / 7000;
+            for (let i = 0; i < numberOfParticles; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function animateParticles() {
+            pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+
+                for (let j = i; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    // Longer connections
+                    if (distance < 150) {
+                        pCtx.strokeStyle = `rgba(0, 255, 65, ${1.2 - distance / 150})`;
+                        pCtx.lineWidth = 0.8;
+                        pCtx.beginPath();
+                        pCtx.moveTo(particles[i].x, particles[i].y);
+                        pCtx.lineTo(particles[j].x, particles[j].y);
+                        pCtx.stroke();
+                    }
+                }
+            }
+            requestAnimationFrame(animateParticles);
+        }
+
+        window.addEventListener('resize', () => {
+            pCanvas.width = window.innerWidth;
+            pCanvas.height = window.innerHeight;
+            initParticles();
+        });
+
+        pCanvas.width = window.innerWidth;
+        pCanvas.height = window.innerHeight;
+        initParticles();
+        animateParticles();
+
+        if (localStorage.getItem('pdf_cracker_token')) {
+            window.location.href = '/dashboard';
+        }
+
+        document.getElementById('email').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') requestLogin();
+        });
+    </script>
+</body>
+
+</html>
