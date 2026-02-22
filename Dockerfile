@@ -1,5 +1,5 @@
-# Base Image
-FROM python:3.11-slim-bullseye
+# Base Image — Bookworm has OpenSSL 3.x (needed by bleeding-jumbo john binary)
+FROM python:3.11-slim-bookworm
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1
@@ -8,7 +8,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install system dependencies + system john (guaranteed to work on Render)
 RUN apt-get update && apt-get install -y \
     perl \
-    libssl1.1 \
+    libssl3 \
     john \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
