@@ -14,21 +14,32 @@ _SYSTEM_JOHN_BIN = shutil.which("john") or "/usr/sbin/john"
 def _test_binary(path: str) -> bool:
     """Check if a john binary actually runs (not just exists)."""
     try:
+        # Check ldd first to see missing libs
+        ldd_res = subprocess.run(["ldd", path], capture_output=True, text=True)
+        print(f"[JTR] ldd output for {path}:\n{ldd_res.stdout}")
+        if "not found" in ldd_res.stdout:
+            print(f"[JTR] WARNING: {path} has missing libraries!")
+        
         result = subprocess.run(
             [path, "--version"],
-            capture_output=True, timeout=5
+            capture_output=True, text=True, timeout=5
         )
-        return result.returncode == 0
-    except Exception:
+        if result.returncode != 0:
+            print(f"[JTR] Binary {path} failed with return code {result.returncode}")
+            print(f"[JTR] Stderr: {result.stderr}")
+            return False
+        return True
+    except Exception as e:
+        print(f"[JTR] Exception testing binary {path}: {e}")
         return False
 
 # Use local bleeding-jumbo ONLY if it actually works (no GLIBC/OpenSSL mismatch)
 if os.path.isfile(_LOCAL_JOHN_BIN) and os.access(_LOCAL_JOHN_BIN, os.X_OK) and _test_binary(_LOCAL_JOHN_BIN):
     JOHN_BIN = _LOCAL_JOHN_BIN
     JOHN_DIR = _LOCAL_RUN_DIR
-    print(f"[JTR] Using bleeding-jumbo binary: {JOHN_BIN}")
+    print(f"[JTR] Success! Using bleeding-jumbo binary: {JOHN_BIN}")
 else:
-    # System john — compatible with Docker environment
+    # System john — compatible with Docker environment but lacks jumbo features
     JOHN_BIN = _SYSTEM_JOHN_BIN
     JOHN_DIR = os.path.dirname(JOHN_BIN) if JOHN_BIN else "/usr/sbin"
     print(f"[JTR] Falling back to system john: {JOHN_BIN}")

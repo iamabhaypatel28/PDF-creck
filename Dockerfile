@@ -12,6 +12,8 @@ RUN apt-get update && apt-get install -y \
     python3-venv \
     perl \
     libssl3 \
+    libgomp1 \
+    zlib1g \
     john \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
