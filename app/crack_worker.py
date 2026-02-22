@@ -17,18 +17,22 @@ def _test_binary(path: str) -> bool:
         # Check ldd first to see missing libs
         ldd_res = subprocess.run(["ldd", path], capture_output=True, text=True)
         print(f"[JTR] ldd output for {path}:\n{ldd_res.stdout}")
-        if "not found" in ldd_res.stdout:
-            print(f"[JTR] WARNING: {path} has missing libraries!")
         
+        # Test execution - some versions don't support --version
+        # We just want to see if it starts without a dynamic linker error
         result = subprocess.run(
-            [path, "--version"],
+            [path],
             capture_output=True, text=True, timeout=5
         )
-        if result.returncode != 0:
-            print(f"[JTR] Binary {path} failed with return code {result.returncode}")
-            print(f"[JTR] Stderr: {result.stderr}")
-            return False
-        return True
+        # If it says "Unknown option" or prints help, it means it executed!
+        output = result.stdout + result.stderr
+        if "John the Ripper" in output or "Unknown option" in output or "Usage:" in output:
+            print(f"[JTR] Binary {path} is executable and running.")
+            return True
+            
+        print(f"[JTR] Binary {path} failed execution test.")
+        print(f"[JTR] Output: {output[:200]}")
+        return False
     except Exception as e:
         print(f"[JTR] Exception testing binary {path}: {e}")
         return False
