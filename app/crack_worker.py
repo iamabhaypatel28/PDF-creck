@@ -5,58 +5,43 @@ import re
 import threading
 from database import get_conn, get_cursor
 
-# John the Ripper configuration — test-run to find best working binary
-_LOCAL_RUN_DIR = os.getenv("JOHN_RUN_DIR", "/app/john-bleeding-jumbo/run")
+# John the Ripper configuration — prioritized compiled jumbo version
+_LOCAL_RUN_DIR = "/app/john-bleeding-jumbo/run"
 _LOCAL_JOHN_BIN = os.path.join(_LOCAL_RUN_DIR, "john")
 _LOCAL_PDF2JOHN = os.path.join(_LOCAL_RUN_DIR, "pdf2john.pl")
 _SYSTEM_JOHN_BIN = shutil.which("john") or "/usr/sbin/john"
 
 def _test_binary(path: str) -> bool:
-    """Check if a john binary actually runs (not just exists)."""
+    """Check if a john binary actually runs."""
     try:
-        # Check ldd first to see missing libs
-        ldd_res = subprocess.run(["ldd", path], capture_output=True, text=True)
-        print(f"[JTR] ldd output for {path}:\n{ldd_res.stdout}")
-        
-        # Test execution - some versions don't support --version
-        # We just want to see if it starts without a dynamic linker error
-        result = subprocess.run(
-            [path],
-            capture_output=True, text=True, timeout=5
-        )
-        # If it says "Unknown option" or prints help, it means it executed!
+        # Check ldd for debugging missing libs
+        subprocess.run(["ldd", path], capture_output=True, text=True)
+        # Test execution
+        result = subprocess.run([path], capture_output=True, text=True, timeout=5)
         output = result.stdout + result.stderr
-        if "John the Ripper" in output or "Unknown option" in output or "Usage:" in output:
-            print(f"[JTR] Binary {path} is executable and running.")
-            return True
-            
-        print(f"[JTR] Binary {path} failed execution test.")
-        print(f"[JTR] Output: {output[:200]}")
-        return False
-    except Exception as e:
-        print(f"[JTR] Exception testing binary {path}: {e}")
+        return "John the Ripper" in output or "Unknown option" in output or "Usage:" in output
+    except Exception:
         return False
 
-# Use local bleeding-jumbo ONLY if it actually works (no GLIBC/OpenSSL mismatch)
-if os.path.isfile(_LOCAL_JOHN_BIN) and os.access(_LOCAL_JOHN_BIN, os.X_OK) and _test_binary(_LOCAL_JOHN_BIN):
+# Priority 1: Compiled Jumbo version (optimized for this CPU)
+if os.path.isfile(_LOCAL_JOHN_BIN) and _test_binary(_LOCAL_JOHN_BIN):
     JOHN_BIN = _LOCAL_JOHN_BIN
     JOHN_DIR = _LOCAL_RUN_DIR
-    print(f"[JTR] Success! Using bleeding-jumbo binary: {JOHN_BIN}")
+    print(f"[JTR] Success! Using compiled jumbo binary: {JOHN_BIN}")
 else:
-    # System john — compatible with Docker environment but lacks jumbo features
+    # Priority 2: System john fallback
     JOHN_BIN = _SYSTEM_JOHN_BIN
     JOHN_DIR = os.path.dirname(JOHN_BIN) if JOHN_BIN else "/usr/sbin"
     print(f"[JTR] Falling back to system john: {JOHN_BIN}")
 
-# pdf2john.pl is a Perl script — always prefer bleeding-jumbo version (no GLIBC issues)
-# Fall back to system path only if bleeding-jumbo script is missing
+# Always prefer the jumbo pdf2john.pl perl script (supports more formats)
 if os.path.isfile(_LOCAL_PDF2JOHN):
     PDF2JOHN = _LOCAL_PDF2JOHN
 else:
     PDF2JOHN = "/usr/share/john/pdf2john.pl"
 
-print(f"[JTR] Using pdf2john: {PDF2JOHN}")
-WORDLIST = os.path.join(_LOCAL_RUN_DIR, "password.lst") if os.path.isdir(_LOCAL_RUN_DIR) else "/usr/share/john/password.lst"
+print(f"[JTR] Loaded pdf2john: {PDF2JOHN}")
+WORDLIST = os.path.join(_LOCAL_RUN_DIR, "password.lst")
 ROCKYOU = os.path.join(_LOCAL_RUN_DIR, "rockyou.txt")
 
 
