@@ -99,87 +99,71 @@ def run_crack_job(job_id: int, pdf_path: str, hash_path: str):
 
 def _try_crack_default(job_id: int, hash_path: str) -> str | None:
     """Try cracking using john's default mode (single + incremental brute force).
-    This is equivalent to just running: ./john pdf.hash
-    Much more powerful than wordlist-only attacks but takes longer.
+    Parses john's DIRECT stdout to extract cracked password.
     """
     try:
-        # Run john with no wordlist — uses single crack mode, then incremental
-        subprocess.run(
+        result = subprocess.run(
             [JOHN_BIN, hash_path],
-            capture_output=True, text=True, timeout=1800, cwd=JOHN_DIR  # 30 min max
+            capture_output=True, text=True, timeout=1800, cwd=JOHN_DIR
         )
-        # Check result
-        show_result = subprocess.run(
-            [JOHN_BIN, "--show", hash_path],
-            capture_output=True, text=True, timeout=30, cwd=JOHN_DIR
-        )
-        return _parse_show_output(show_result.stdout)
+        print(f"[JTR] default mode stdout: {repr(result.stdout[:400])}")
+        print(f"[JTR] default mode stderr: {repr(result.stderr[:400])}")
+        return _parse_john_output(result.stdout + result.stderr)
     except subprocess.TimeoutExpired:
-        print(f"[Job {job_id}] John default mode timed out (30 min)")
-        # Still check if it cracked something before timing out
-        try:
-            show_result = subprocess.run(
-                [JOHN_BIN, "--show", hash_path],
-                capture_output=True, text=True, timeout=10, cwd=JOHN_DIR
-            )
-            return _parse_show_output(show_result.stdout)
-        except Exception:
-            return None
+        print(f"[Job {job_id}] John default mode timed out")
+        return None
 
 
 def _try_crack(job_id: int, hash_path: str, wordlist: str) -> str | None:
-    """Try cracking hash with given wordlist. Returns password or None."""
+    """Try cracking hash with given wordlist. Parses john's DIRECT stdout."""
     try:
-        # First check if already cracked (john.pot)
-        show_result = subprocess.run(
-            [JOHN_BIN, "--show", hash_path],
-            capture_output=True, text=True, timeout=30, cwd=JOHN_DIR
-        )
-        password = _parse_show_output(show_result.stdout)
-        if password:
-            return password
-
-        # Run john to crack
-        subprocess.run(
+        result = subprocess.run(
             [JOHN_BIN, hash_path, f"--wordlist={wordlist}"],
             capture_output=True, text=True, timeout=600, cwd=JOHN_DIR
         )
-
-        # Check result
-        show_result = subprocess.run(
-            [JOHN_BIN, "--show", hash_path],
-            capture_output=True, text=True, timeout=30, cwd=JOHN_DIR
-        )
-        return _parse_show_output(show_result.stdout)
-
+        print(f"[JTR] wordlist stdout: {repr(result.stdout[:400])}")
+        print(f"[JTR] wordlist stderr: {repr(result.stderr[:200])}")
+        return _parse_john_output(result.stdout + result.stderr)
     except subprocess.TimeoutExpired:
         print(f"[Job {job_id}] John timed out with {wordlist}")
         return None
 
 
-def _parse_show_output(output: str) -> str | None:
-    """Parse 'john --show' output to extract password.
-    Output format: /path/to/hash.file:PASSWORD:uid:gid:gecos:home:shell
-    Example: /app/app/uploads/abc_kavin.pdf:22022657
+def _parse_john_output(output: str) -> str | None:
+    """Parse john's direct stdout/stderr to extract cracked password.
+    John prints cracked passwords in format:
+      PASSWORD          (/path/to/file)
+    or:
+      PASSWORD          (/path/to/file)    (raw hash)
     """
+    print(f"[JTR] Parsing output: {repr(output[:500])}")
+    import re
+    # Pattern: anything followed by whitespace and (filename) at end of line
+    pattern = re.compile(r'^(.+?)\s{2,}\(.*\)\s*$', re.MULTILINE)
+    for match in pattern.finditer(output):
+        candidate = match.group(1).strip()
+        # Filter out john status lines
+        if candidate and not candidate.startswith('Press') and not candidate.startswith('Loaded') and not candidate.startswith('Remaining'):
+            print(f"[JTR] Cracked password found: {candidate}")
+            return candidate
+    return None
+
+
+def _parse_show_output(output: str) -> str | None:
+    """Legacy: Parse 'john --show' output. Kept for compatibility."""
     print(f"[JTR] --show output: {repr(output[:300])}")
     for line in output.splitlines():
         line = line.strip()
-        # Skip summary lines like "0 password hashes cracked" or "1 password hash cracked"
         if not line or line[0].isdigit():
             continue
-        # Skip other info lines
-        if "password hash" in line.lower() or "No password" in line:
+        if 'password hash' in line.lower() or 'No password' in line:
             continue
-        # Real password lines: /path/to/file:password[:other:fields]
-        if ":" in line:
-            # Split only on first occurrence after the path - paths can have colons on Windows
-            # But on Linux: /path:PASSWORD:...
-            parts = line.split(":")
+        if ':' in line:
+            parts = line.split(':')
             if len(parts) >= 2:
                 password = parts[1].strip()
                 if password:
-                    print(f"[JTR] Found password: {password}")
+                    print(f"[JTR] Found password via --show: {password}")
                     return password
     return None
 
