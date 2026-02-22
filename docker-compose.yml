@@ -6,10 +6,9 @@ services:
     ports:
       - "8000:8000"
     volumes:
+      # Persist uploads between restarts
       - ./app/uploads:/app/app/uploads
+      # Persist john.pot (cracked passwords) across container restarts
+      - ./john-bleeding-jumbo/run:/app/john-bleeding-jumbo/run
     env_file:
       - ./app/.env
-    # Removed local db dependency since you are using Neon DB live
-    # If you want local DB, we can add it back, but currently you provided Neon URL.
-
-    # No volumes needed if using Neon

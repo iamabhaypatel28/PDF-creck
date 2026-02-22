@@ -159,13 +159,27 @@ def _try_crack(job_id: int, hash_path: str, wordlist: str) -> str | None:
 
 def _parse_show_output(output: str) -> str | None:
     """Parse 'john --show' output to extract password.
-    Output format: filename:password:..."""
+    Output format: /path/to/hash.file:PASSWORD:uid:gid:gecos:home:shell
+    Example: /app/app/uploads/abc_kavin.pdf:22022657
+    """
+    print(f"[JTR] --show output: {repr(output[:300])}")
     for line in output.splitlines():
-        if ":" in line and not line.startswith("0 ") and not line.startswith("1 "):
+        line = line.strip()
+        # Skip summary lines like "0 password hashes cracked" or "1 password hash cracked"
+        if not line or line[0].isdigit():
+            continue
+        # Skip other info lines
+        if "password hash" in line.lower() or "No password" in line:
+            continue
+        # Real password lines: /path/to/file:password[:other:fields]
+        if ":" in line:
+            # Split only on first occurrence after the path - paths can have colons on Windows
+            # But on Linux: /path:PASSWORD:...
             parts = line.split(":")
             if len(parts) >= 2:
                 password = parts[1].strip()
                 if password:
+                    print(f"[JTR] Found password: {password}")
                     return password
     return None
 
