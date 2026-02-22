@@ -325,6 +325,23 @@
             padding: 4px;
         }
 
+        .delete-btn {
+            background: none;
+            border: 1px solid transparent;
+            color: #666;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .delete-btn:hover {
+            color: #ff4444;
+            border-color: #ff4444;
+            text-shadow: 0 0 8px #ff4444;
+        }
+
         /* Toast */
         .toast {
             position: fixed;
@@ -661,19 +678,41 @@
 
                 const pwd = j.cracked_password
                     ? `<div class="password-display">${j.cracked_password} <button class="copy-btn" onclick="copyPwd('${j.cracked_password}')">📋</button></div>`
-                    : `<span style="opacity:0.4">DECRYPTING...</span>`;
+                    : (j.status === 'failed'
+                        ? `<span style="color:#ff4444;font-size:0.75rem;opacity:0.8">${j.fail_reason || 'Failed'}</span>`
+                        : `<span style="opacity:0.4">DECRYPTING...</span>`);
 
-                return `<tr class="job-row">
+                return `<tr class="job-row" id="job-row-${j.id}">
           <td>> ${j.original_name}</td>
           <td><span class="status-tag ${statusClass}">${label}</span></td>
           <td>${pwd}</td>
           <td style="opacity:0.5; font-size:0.7rem">${j.created_at.split(' ')[1]}</td>
+          <td><button class="delete-btn" onclick="deleteJob(${j.id})" title="Delete">🗑️</button></td>
         </tr>`;
             }).join('');
         }
 
         function copyPwd(pwd) {
             navigator.clipboard.writeText(pwd).then(() => showToast('>>> KEY_COPIED_TO_CLIPBOARD'));
+        }
+
+        async function deleteJob(jobId) {
+            if (!confirm('Delete this job? This cannot be undone.')) return;
+            try {
+                const res = await fetch(`/jobs/${jobId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (res.ok) {
+                    showToast('>>> JOB_DELETED');
+                    document.getElementById(`job-row-${jobId}`)?.remove();
+                    loadJobs();
+                } else {
+                    showToast('>>> DELETE_FAILED');
+                }
+            } catch (e) {
+                showToast('>>> NETWORK_ERROR');
+            }
         }
 
         function showToast(msg) {

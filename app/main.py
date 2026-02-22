@@ -211,3 +211,36 @@ def get_job(job_id: int, user: dict = Depends(get_current_user)):
     job["created_at"] = str(job["created_at"])
     job["updated_at"] = str(job["updated_at"])
     return job
+
+
+@app.delete("/jobs/{job_id}")
+def delete_job(job_id: int, user: dict = Depends(get_current_user)):
+    conn = get_conn()
+    cur = get_cursor(conn)
+    # Fetch job to verify ownership and get file paths
+    cur.execute(
+        "SELECT * FROM crack_jobs WHERE id = %s AND user_id = %s",
+        (job_id, int(user["sub"])),
+    )
+    row = cur.fetchone()
+    if not row:
+        cur.close()
+        conn.close()
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    job = dict(row)
+    
+    # Delete associated files
+    for file_key in ["pdf_filename", "hash_file"]:
+        filepath = job.get(file_key)
+        if filepath and os.path.exists(filepath):
+            try:
+                os.remove(filepath)
+            except Exception:
+                pass
+    
+    # Delete from database
+    cur.execute("DELETE FROM crack_jobs WHERE id = %s AND user_id = %s", (job_id, int(user["sub"])))
+    cur.close()
+    conn.close()
+    return {"message": "Job deleted successfully", "job_id": job_id}
