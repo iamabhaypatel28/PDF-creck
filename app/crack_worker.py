@@ -80,16 +80,51 @@ def run_crack_job(job_id: int, pdf_path: str, hash_path: str):
             print(f"[Job {job_id}] Trying rockyou.txt wordlist...")
             cracked = _try_crack(job_id, hash_path, ROCKYOU)
 
+        # Step 4: Try john's default mode (single + incremental) — most powerful
+        if not cracked:
+            print(f"[Job {job_id}] Trying john default mode (brute force)...")
+            cracked = _try_crack_default(job_id, hash_path)
+
         if cracked:
             update_job(job_id, "cracked", cracked)
             print(f"[Job {job_id}] Password cracked: {cracked}")
         else:
-            update_job(job_id, "failed", fail_reason="Password not found in wordlists (try a stronger attack)")
+            update_job(job_id, "failed", fail_reason="Password not found — too complex for current wordlists")
             print(f"[Job {job_id}] Could not crack password")
 
     except Exception as e:
         print(f"[Job {job_id}] ERROR: {e}")
         update_job(job_id, "failed", fail_reason=f"Unexpected error: {str(e)[:200]}")
+
+
+def _try_crack_default(job_id: int, hash_path: str) -> str | None:
+    """Try cracking using john's default mode (single + incremental brute force).
+    This is equivalent to just running: ./john pdf.hash
+    Much more powerful than wordlist-only attacks but takes longer.
+    """
+    try:
+        # Run john with no wordlist — uses single crack mode, then incremental
+        subprocess.run(
+            [JOHN_BIN, hash_path],
+            capture_output=True, text=True, timeout=1800, cwd=JOHN_DIR  # 30 min max
+        )
+        # Check result
+        show_result = subprocess.run(
+            [JOHN_BIN, "--show", hash_path],
+            capture_output=True, text=True, timeout=30, cwd=JOHN_DIR
+        )
+        return _parse_show_output(show_result.stdout)
+    except subprocess.TimeoutExpired:
+        print(f"[Job {job_id}] John default mode timed out (30 min)")
+        # Still check if it cracked something before timing out
+        try:
+            show_result = subprocess.run(
+                [JOHN_BIN, "--show", hash_path],
+                capture_output=True, text=True, timeout=10, cwd=JOHN_DIR
+            )
+            return _parse_show_output(show_result.stdout)
+        except Exception:
+            return None
 
 
 def _try_crack(job_id: int, hash_path: str, wordlist: str) -> str | None:
