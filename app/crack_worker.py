@@ -24,14 +24,22 @@ else:
 WORDLIST = os.path.join(_LOCAL_RUN_DIR, "password.lst") if os.path.isdir(_LOCAL_RUN_DIR) else "/usr/share/john/password.lst"
 ROCKYOU = os.path.join(_LOCAL_RUN_DIR, "rockyou.txt")
 
+print(f"[JTR] Using binary: {JOHN_BIN}")
+print(f"[JTR] Using pdf2john: {PDF2JOHN}")
 
-def update_job(job_id: int, status: str, password: str = None):
+
+def update_job(job_id: int, status: str, password: str = None, fail_reason: str = None):
     conn = get_conn()
     cur = get_cursor(conn)
     if password:
         cur.execute(
-            "UPDATE crack_jobs SET status=%s, cracked_password=%s, updated_at=NOW() WHERE id=%s",
+            "UPDATE crack_jobs SET status=%s, cracked_password=%s, fail_reason=NULL, updated_at=NOW() WHERE id=%s",
             (status, password, job_id),
+        )
+    elif fail_reason:
+        cur.execute(
+            "UPDATE crack_jobs SET status=%s, fail_reason=%s, updated_at=NOW() WHERE id=%s",
+            (status, fail_reason, job_id),
         )
     else:
         cur.execute(
@@ -48,14 +56,14 @@ def run_crack_job(job_id: int, pdf_path: str, hash_path: str):
         update_job(job_id, "extracting_hash")
 
         # Step 1: pdf2john.pl to extract hash
-        with open(hash_path, "w") as hf:
-            result = subprocess.run(
-                ["perl", PDF2JOHN, pdf_path],
-                capture_output=True, text=True, timeout=60, cwd=JOHN_DIR
-            )
-        
+        result = subprocess.run(
+            ["perl", PDF2JOHN, pdf_path],
+            capture_output=True, text=True, timeout=60, cwd=JOHN_DIR
+        )
+
         if result.returncode != 0 or not result.stdout.strip():
-            update_job(job_id, "failed")
+            reason = "PDF is not password protected" if not result.stdout.strip() else f"Hash extraction failed: {result.stderr[:200]}"
+            update_job(job_id, "failed", fail_reason=reason)
             print(f"[Job {job_id}] pdf2john failed: {result.stderr}")
             return
 
@@ -66,7 +74,7 @@ def run_crack_job(job_id: int, pdf_path: str, hash_path: str):
 
         # Step 2: Try with password.lst first (faster)
         cracked = _try_crack(job_id, hash_path, WORDLIST)
-        
+
         # Step 3: If not cracked, try with rockyou.txt
         if not cracked and os.path.exists(ROCKYOU):
             print(f"[Job {job_id}] Trying rockyou.txt wordlist...")
@@ -76,12 +84,12 @@ def run_crack_job(job_id: int, pdf_path: str, hash_path: str):
             update_job(job_id, "cracked", cracked)
             print(f"[Job {job_id}] Password cracked: {cracked}")
         else:
-            update_job(job_id, "failed")
+            update_job(job_id, "failed", fail_reason="Password not found in wordlists (try a stronger attack)")
             print(f"[Job {job_id}] Could not crack password")
 
     except Exception as e:
         print(f"[Job {job_id}] ERROR: {e}")
-        update_job(job_id, "failed")
+        update_job(job_id, "failed", fail_reason=f"Unexpected error: {str(e)[:200]}")
 
 
 def _try_crack(job_id: int, hash_path: str, wordlist: str) -> str | None:

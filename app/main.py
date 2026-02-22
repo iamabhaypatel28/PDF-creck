@@ -179,7 +179,7 @@ def list_jobs(user: dict = Depends(get_current_user)):
     cur = get_cursor(conn)
     cur.execute(
         """
-        SELECT id, original_name, status, cracked_password, created_at, updated_at
+        SELECT id, original_name, status, cracked_password, fail_reason, created_at, updated_at
         FROM crack_jobs WHERE user_id = %s ORDER BY created_at DESC
         """,
         (int(user["sub"]),),

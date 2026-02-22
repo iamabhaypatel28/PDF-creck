@@ -57,9 +57,15 @@ def init_db():
             hash_file VARCHAR(500),
             status VARCHAR(50) DEFAULT 'pending',
             cracked_password VARCHAR(500),
+            fail_reason TEXT,
             created_at TIMESTAMP DEFAULT NOW(),
             updated_at TIMESTAMP DEFAULT NOW()
         );
     """)
+    # Add fail_reason column if it doesn't exist (for already-deployed DBs)
+    try:
+        cur.execute("ALTER TABLE crack_jobs ADD COLUMN IF NOT EXISTS fail_reason TEXT;")
+    except Exception:
+        pass  # Column already exists
     cur.close()
     conn.close()
