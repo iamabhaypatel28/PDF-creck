@@ -412,7 +412,7 @@
                 <div class="input-wrapper">
                     <label>> IDENTIFY USER_ID (EMAIL)</label>
                     <input type="email" id="email" class="input-field" placeholder="root@secure_net"
-                        autocomplete="email" />
+                        autocomplete="email" required pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$" />
                 </div>
 
                 <button class="btn" id="loginBtn" onclick="requestLogin()">
@@ -489,9 +489,16 @@
 
         // Login Logic
         async function requestLogin() {
-            const email = document.getElementById('email').value.trim();
+            const emailInput = document.getElementById('email');
+            const email = emailInput.value.trim();
+
             if (!email) {
                 showError('ERR: MISSING_USER_ID');
+                return;
+            }
+
+            if (!emailInput.checkValidity()) {
+                showError('ERR: INVALID_EMAIL_FORMAT');
                 return;
             }
 
