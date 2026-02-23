@@ -66,7 +66,11 @@ else:
         SYSTEM_PDF2JOHN = "/usr/sbin/pdf2john" # Common on some Ubuntu distros
     PDF2JOHN = SYSTEM_PDF2JOHN
 
+# Pot file location (writable)
+POT_FILE = os.path.join(_BASE_DIR, "app", "uploads", "john.pot")
+
 print(f"[JTR] Loaded pdf2john: {PDF2JOHN}")
+print(f"[JTR] Using pot file: {POT_FILE}")
 WORDLIST = os.path.join(_LOCAL_RUN_DIR, "password.lst")
 ROCKYOU = os.path.join(_LOCAL_RUN_DIR, "rockyou.txt")
 
@@ -149,7 +153,7 @@ def _try_crack_default(job_id: int, hash_path: str) -> str | None:
     """Try cracking using john's default mode (single + incremental brute force)."""
     try:
         result = subprocess.run(
-            [JOHN_BIN, hash_path],
+            [JOHN_BIN, hash_path, f"--pot={POT_FILE}"],
             capture_output=True, text=True, timeout=1800, cwd=JOHN_DIR
         )
         return _parse_john_output(result.stdout + result.stderr)
@@ -162,7 +166,7 @@ def _try_numeric(job_id: int, hash_path: str) -> str | None:
     try:
         # Use incremental=digits mode which is built-in for most JTR builds
         result = subprocess.run(
-            [JOHN_BIN, hash_path, "--incremental=digits"],
+            [JOHN_BIN, hash_path, "--incremental=digits", f"--pot={POT_FILE}"],
             capture_output=True, text=True, timeout=600, cwd=JOHN_DIR
         )
         print(f"[JTR] numeric mode stdout: {repr(result.stdout[:400])}")
@@ -177,7 +181,7 @@ def _try_crack(job_id: int, hash_path: str, wordlist: str) -> str | None:
     """Try cracking hash with given wordlist. Parses john's DIRECT stdout."""
     try:
         result = subprocess.run(
-            [JOHN_BIN, hash_path, f"--wordlist={wordlist}"],
+            [JOHN_BIN, hash_path, f"--wordlist={wordlist}", f"--pot={POT_FILE}"],
             capture_output=True, text=True, timeout=600, cwd=JOHN_DIR
         )
         print(f"[JTR] wordlist stdout: {repr(result.stdout[:400])}")
