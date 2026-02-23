@@ -5,6 +5,9 @@ import re
 import threading
 from database import get_conn, get_cursor
 
+# ANSI escape code stripper (for clean passwords)
+ANSI_ESCAPE = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+
 # John the Ripper configuration — prioritized compiled jumbo version
 # Dynamic path detection for Local vs Docker
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -119,8 +122,13 @@ def run_crack_job(job_id: int, pdf_path: str, hash_path: str):
 
         update_job(job_id, "cracking")
 
-        # Step 2: Try with small wordlist first (password.lst)
-        cracked = _try_crack(job_id, hash_path, WORDLIST)
+        # Step 1.5: Immediate check — is it already in the pot? (FAST RECOVERY)
+        print(f"[Job {job_id}] Checking if hash is already cracked...")
+        cracked = _check_pot(hash_path)
+        
+        if not cracked:
+            # Step 2: Try with small wordlist first (password.lst)
+            cracked = _try_crack(job_id, hash_path, WORDLIST)
 
         # Step 3: Try numeric brute force (FAST and SUCCESSFUL for digits like 123456)
         if not cracked:
@@ -137,9 +145,8 @@ def run_crack_job(job_id: int, pdf_path: str, hash_path: str):
             print(f"[Job {job_id}] Trying john default mode (full brute force)...")
             cracked = _try_crack_default(job_id, hash_path)
 
-        # Final check: If nothing found in stdout, check if it's already in the pot
+        # Final check: In case it cracked but stdout was messy
         if not cracked:
-            print(f"[Job {job_id}] Checking pot file for existing crack...")
             cracked = _check_pot(hash_path)
 
         if cracked:
@@ -210,21 +217,14 @@ def _try_crack(job_id: int, hash_path: str, wordlist: str) -> str | None:
 
 
 def _parse_john_output(output: str) -> str | None:
-    """Parse john's direct stdout/stderr to extract cracked password.
-    John prints cracked passwords in format:
-      PASSWORD          (/path/to/file)
-    """
+    """Parse john's cracked password from stdout/stderr."""
     if not output:
         return None
         
-    print(f"[JTR] Parsing output (first 200 chars): {repr(output[:200])}")
+    # Strip colors first
+    clean_text = ANSI_ESCAPE.sub('', output)
     
-    # ANSI escape code stripping (important for clean passwords)
-    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
-    clean_text = ansi_escape.sub('', output)
-    
-    import re
-    # Pattern: anything followed by multiple spaces and (filename)
+    # Pattern: PASSWORD          (/path/to/file)
     pattern = re.compile(r'^(.+?)\s{2,}\(.*\)\s*$', re.MULTILINE)
     for match in pattern.finditer(clean_text):
         candidate = match.group(1).strip()
