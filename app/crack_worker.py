@@ -119,23 +119,28 @@ def run_crack_job(job_id: int, pdf_path: str, hash_path: str):
 
         update_job(job_id, "cracking")
 
-        # Step 2: Try with password.lst first (faster)
+        # Step 2: Try with small wordlist first (password.lst)
         cracked = _try_crack(job_id, hash_path, WORDLIST)
 
-        # Step 3: If not cracked, try with rockyou.txt
-        if not cracked and os.path.exists(ROCKYOU):
-            print(f"[Job {job_id}] Trying rockyou.txt wordlist...")
-            cracked = _try_crack(job_id, hash_path, ROCKYOU)
-
-        # Step 4: Try numeric brute force (EXCELLENT for birthdays like 22022657)
+        # Step 3: Try numeric brute force (FAST and SUCCESSFUL for digits like 123456)
         if not cracked:
             print(f"[Job {job_id}] Trying specialized numeric brute-force...")
             cracked = _try_numeric(job_id, hash_path)
 
-        # Step 5: Try john's default mode (single + incremental) — most powerful
+        # Step 4: Try with rockyou.txt (Slow, millions of passwords)
+        if not cracked and os.path.exists(ROCKYOU):
+            print(f"[Job {job_id}] Trying rockyou.txt wordlist...")
+            cracked = _try_crack(job_id, hash_path, ROCKYOU)
+
+        # Step 5: Try john's default mode (full brute force)
         if not cracked:
             print(f"[Job {job_id}] Trying john default mode (full brute force)...")
             cracked = _try_crack_default(job_id, hash_path)
+
+        # Final check: If nothing found in stdout, check if it's already in the pot
+        if not cracked:
+            print(f"[Job {job_id}] Checking pot file for existing crack...")
+            cracked = _check_pot(hash_path)
 
         if cracked:
             update_job(job_id, "cracked", cracked)
@@ -147,6 +152,18 @@ def run_crack_job(job_id: int, pdf_path: str, hash_path: str):
     except Exception as e:
         print(f"[Job {job_id}] ERROR: {e}")
         update_job(job_id, "failed", fail_reason=f"Unexpected error: {str(e)[:200]}")
+
+
+def _check_pot(hash_path: str) -> str | None:
+    """Check if hash is already cracked using john --show."""
+    try:
+        result = subprocess.run(
+            [JOHN_BIN, "--show", hash_path, f"--pot={POT_FILE}"],
+            capture_output=True, text=True, timeout=10, cwd=JOHN_DIR
+        )
+        return _parse_show_output(result.stdout)
+    except Exception:
+        return None
 
 
 def _try_crack_default(job_id: int, hash_path: str) -> str | None:
