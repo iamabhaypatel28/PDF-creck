@@ -6,7 +6,10 @@ import threading
 from database import get_conn, get_cursor
 
 # John the Ripper configuration — prioritized compiled jumbo version
-_LOCAL_RUN_DIR = "/app/john-bleeding-jumbo/run"
+# Dynamic path detection for Local vs Docker
+_BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_LOCAL_RUN_DIR = os.path.join(_BASE_DIR, "john-bleeding-jumbo", "run")
+
 _LOCAL_JOHN_BIN = os.path.join(_LOCAL_RUN_DIR, "john")
 _LOCAL_PDF2JOHN = os.path.join(_LOCAL_RUN_DIR, "pdf2john.pl")
 _SYSTEM_JOHN_BIN = shutil.which("john") or "/usr/sbin/john"
@@ -17,6 +20,8 @@ def _print_debug_info():
     try:
         print(f"[DEBUG-LIVE] User: {subprocess.check_output(['whoami'], text=True).strip()}")
         print(f"[DEBUG-LIVE] PWD: {os.getcwd()}")
+        print(f"[DEBUG-LIVE] Base Dir: {_BASE_DIR}")
+        print(f"[DEBUG-LIVE] Local Run Dir: {_LOCAL_RUN_DIR}")
         if os.path.exists("/proc/cpuinfo"):
             with open("/proc/cpuinfo", "r") as f:
                 cpu = [line for line in f if "model name" in line]
@@ -26,26 +31,22 @@ def _print_debug_info():
 
 def _test_binary(path: str) -> bool:
     """Check if a john binary actually runs."""
+    if not os.path.exists(path):
+        return False
     try:
-        # Check ldd for missing libs
-        ldd = subprocess.run(["ldd", path], capture_output=True, text=True)
-        print(f"[DEBUG-LIVE] ldd for {path}:\n{ldd.stdout}")
-        
+        # Check ldd for missing libs (optional, helps debug)
+        subprocess.run(["ldd", path], capture_output=True, text=True)
         # Test execution
         result = subprocess.run([path], capture_output=True, text=True, timeout=5)
         output = result.stdout + result.stderr
-        if "John the Ripper" in output or "Unknown option" in output or "Usage:" in output:
-            return True
-        print(f"[DEBUG-LIVE] Binary {path} failed test. Output: {repr(output[:200])}")
-        return False
-    except Exception as e:
-        print(f"[DEBUG-LIVE] Exception testing {path}: {e}")
+        return "John the Ripper" in output or "Unknown option" in output or "Usage:" in output
+    except Exception:
         return False
 
 _print_debug_info()
 
 # Priority 1: Compiled Jumbo version (optimized for this CPU)
-if os.path.isfile(_LOCAL_JOHN_BIN) and _test_binary(_LOCAL_JOHN_BIN):
+if _test_binary(_LOCAL_JOHN_BIN):
     JOHN_BIN = _LOCAL_JOHN_BIN
     JOHN_DIR = _LOCAL_RUN_DIR
     print(f"[JTR] Success! Using compiled jumbo binary: {JOHN_BIN}")
@@ -59,7 +60,11 @@ else:
 if os.path.isfile(_LOCAL_PDF2JOHN):
     PDF2JOHN = _LOCAL_PDF2JOHN
 else:
-    PDF2JOHN = "/usr/share/john/pdf2john.pl"
+    # System fallback paths
+    SYSTEM_PDF2JOHN = "/usr/share/john/pdf2john.pl"
+    if not os.path.isfile(SYSTEM_PDF2JOHN):
+        SYSTEM_PDF2JOHN = "/usr/sbin/pdf2john" # Common on some Ubuntu distros
+    PDF2JOHN = SYSTEM_PDF2JOHN
 
 print(f"[JTR] Loaded pdf2john: {PDF2JOHN}")
 WORDLIST = os.path.join(_LOCAL_RUN_DIR, "password.lst")
