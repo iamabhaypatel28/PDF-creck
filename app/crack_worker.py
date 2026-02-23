@@ -11,17 +11,38 @@ _LOCAL_JOHN_BIN = os.path.join(_LOCAL_RUN_DIR, "john")
 _LOCAL_PDF2JOHN = os.path.join(_LOCAL_RUN_DIR, "pdf2john.pl")
 _SYSTEM_JOHN_BIN = shutil.which("john") or "/usr/sbin/john"
 
+def _print_debug_info():
+    """Print deep debug info for live environment troubleshooting."""
+    print("[DEBUG-LIVE] --- System Info ---")
+    try:
+        print(f"[DEBUG-LIVE] User: {subprocess.check_output(['whoami'], text=True).strip()}")
+        print(f"[DEBUG-LIVE] PWD: {os.getcwd()}")
+        if os.path.exists("/proc/cpuinfo"):
+            with open("/proc/cpuinfo", "r") as f:
+                cpu = [line for line in f if "model name" in line]
+                if cpu: print(f"[DEBUG-LIVE] CPU: {cpu[0].split(':')[1].strip()}")
+    except Exception as e:
+        print(f"[DEBUG-LIVE] Debug info error: {e}")
+
 def _test_binary(path: str) -> bool:
     """Check if a john binary actually runs."""
     try:
-        # Check ldd for debugging missing libs
-        subprocess.run(["ldd", path], capture_output=True, text=True)
+        # Check ldd for missing libs
+        ldd = subprocess.run(["ldd", path], capture_output=True, text=True)
+        print(f"[DEBUG-LIVE] ldd for {path}:\n{ldd.stdout}")
+        
         # Test execution
         result = subprocess.run([path], capture_output=True, text=True, timeout=5)
         output = result.stdout + result.stderr
-        return "John the Ripper" in output or "Unknown option" in output or "Usage:" in output
-    except Exception:
+        if "John the Ripper" in output or "Unknown option" in output or "Usage:" in output:
+            return True
+        print(f"[DEBUG-LIVE] Binary {path} failed test. Output: {repr(output[:200])}")
         return False
+    except Exception as e:
+        print(f"[DEBUG-LIVE] Exception testing {path}: {e}")
+        return False
+
+_print_debug_info()
 
 # Priority 1: Compiled Jumbo version (optimized for this CPU)
 if os.path.isfile(_LOCAL_JOHN_BIN) and _test_binary(_LOCAL_JOHN_BIN):
@@ -97,9 +118,14 @@ def run_crack_job(job_id: int, pdf_path: str, hash_path: str):
             print(f"[Job {job_id}] Trying rockyou.txt wordlist...")
             cracked = _try_crack(job_id, hash_path, ROCKYOU)
 
-        # Step 4: Try john's default mode (single + incremental) — most powerful
+        # Step 4: Try numeric brute force (EXCELLENT for birthdays like 22022657)
         if not cracked:
-            print(f"[Job {job_id}] Trying john default mode (brute force)...")
+            print(f"[Job {job_id}] Trying specialized numeric brute-force...")
+            cracked = _try_numeric(job_id, hash_path)
+
+        # Step 5: Try john's default mode (single + incremental) — most powerful
+        if not cracked:
+            print(f"[Job {job_id}] Trying john default mode (full brute force)...")
             cracked = _try_crack_default(job_id, hash_path)
 
         if cracked:
@@ -115,19 +141,30 @@ def run_crack_job(job_id: int, pdf_path: str, hash_path: str):
 
 
 def _try_crack_default(job_id: int, hash_path: str) -> str | None:
-    """Try cracking using john's default mode (single + incremental brute force).
-    Parses john's DIRECT stdout to extract cracked password.
-    """
+    """Try cracking using john's default mode (single + incremental brute force)."""
     try:
         result = subprocess.run(
             [JOHN_BIN, hash_path],
             capture_output=True, text=True, timeout=1800, cwd=JOHN_DIR
         )
-        print(f"[JTR] default mode stdout: {repr(result.stdout[:400])}")
-        print(f"[JTR] default mode stderr: {repr(result.stderr[:400])}")
         return _parse_john_output(result.stdout + result.stderr)
     except subprocess.TimeoutExpired:
         print(f"[Job {job_id}] John default mode timed out")
+        return None
+
+def _try_numeric(job_id: int, hash_path: str) -> str | None:
+    """Try specialized numeric incremental mode (very fast for passwords like 22022657)."""
+    try:
+        # Use incremental=digits mode which is built-in for most JTR builds
+        result = subprocess.run(
+            [JOHN_BIN, hash_path, "--incremental=digits"],
+            capture_output=True, text=True, timeout=600, cwd=JOHN_DIR
+        )
+        print(f"[JTR] numeric mode stdout: {repr(result.stdout[:400])}")
+        print(f"[JTR] numeric mode stderr: {repr(result.stderr[:400])}")
+        return _parse_john_output(result.stdout + result.stderr)
+    except subprocess.TimeoutExpired:
+        print(f"[Job {job_id}] John numeric mode timed out")
         return None
 
 
