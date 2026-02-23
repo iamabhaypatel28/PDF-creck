@@ -213,17 +213,23 @@ def _parse_john_output(output: str) -> str | None:
     """Parse john's direct stdout/stderr to extract cracked password.
     John prints cracked passwords in format:
       PASSWORD          (/path/to/file)
-    or:
-      PASSWORD          (/path/to/file)    (raw hash)
     """
-    print(f"[JTR] Parsing output: {repr(output[:500])}")
+    if not output:
+        return None
+        
+    print(f"[JTR] Parsing output (first 200 chars): {repr(output[:200])}")
+    
+    # ANSI escape code stripping (important for clean passwords)
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    clean_text = ansi_escape.sub('', output)
+    
     import re
-    # Pattern: anything followed by whitespace and (filename) at end of line
+    # Pattern: anything followed by multiple spaces and (filename)
     pattern = re.compile(r'^(.+?)\s{2,}\(.*\)\s*$', re.MULTILINE)
-    for match in pattern.finditer(output):
+    for match in pattern.finditer(clean_text):
         candidate = match.group(1).strip()
-        # Filter out john status lines
-        if candidate and not candidate.startswith('Press') and not candidate.startswith('Loaded') and not candidate.startswith('Remaining'):
+        # Filter out status/usage lines
+        if candidate and not any(x in candidate for x in ['Press', 'Loaded', 'Remaining', 'Usage:']):
             print(f"[JTR] Cracked password found: {candidate}")
             return candidate
     return None
