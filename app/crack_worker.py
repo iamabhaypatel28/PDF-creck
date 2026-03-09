@@ -8,6 +8,10 @@ from database import get_conn, get_cursor
 # ANSI escape code stripper (for clean passwords)
 ANSI_ESCAPE = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
 
+# Environment for JTR (limit CPU threads so it doesn't kill the server healthchecks)
+JTR_ENV = os.environ.copy()
+JTR_ENV["OMP_NUM_THREADS"] = "1"
+
 # John the Ripper configuration — prioritized compiled jumbo version
 # Dynamic path detection for Local vs Docker
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -166,7 +170,7 @@ def _check_pot(hash_path: str) -> str | None:
     try:
         result = subprocess.run(
             [JOHN_BIN, "--show", hash_path, f"--pot={POT_FILE}"],
-            capture_output=True, text=True, timeout=10, cwd=JOHN_DIR
+            capture_output=True, text=True, timeout=10, cwd=JOHN_DIR, env=JTR_ENV
         )
         return _parse_show_output(result.stdout)
     except Exception:
@@ -178,7 +182,7 @@ def _try_crack_default(job_id: int, hash_path: str) -> str | None:
     try:
         result = subprocess.run(
             [JOHN_BIN, hash_path, f"--pot={POT_FILE}"],
-            capture_output=True, text=True, timeout=1800, cwd=JOHN_DIR
+            capture_output=True, text=True, timeout=1800, cwd=JOHN_DIR, env=JTR_ENV
         )
         return _parse_john_output(result.stdout + result.stderr)
     except subprocess.TimeoutExpired:
@@ -191,7 +195,7 @@ def _try_numeric(job_id: int, hash_path: str) -> str | None:
         # Use incremental=digits mode which is built-in for most JTR builds
         result = subprocess.run(
             [JOHN_BIN, hash_path, "--incremental=digits", f"--pot={POT_FILE}"],
-            capture_output=True, text=True, timeout=600, cwd=JOHN_DIR
+            capture_output=True, text=True, timeout=600, cwd=JOHN_DIR, env=JTR_ENV
         )
         print(f"[JTR] numeric mode stdout: {repr(result.stdout[:400])}")
         print(f"[JTR] numeric mode stderr: {repr(result.stderr[:400])}")
@@ -206,7 +210,7 @@ def _try_crack(job_id: int, hash_path: str, wordlist: str) -> str | None:
     try:
         result = subprocess.run(
             [JOHN_BIN, hash_path, f"--wordlist={wordlist}", f"--pot={POT_FILE}"],
-            capture_output=True, text=True, timeout=600, cwd=JOHN_DIR
+            capture_output=True, text=True, timeout=600, cwd=JOHN_DIR, env=JTR_ENV
         )
         print(f"[JTR] wordlist stdout: {repr(result.stdout[:400])}")
         print(f"[JTR] wordlist stderr: {repr(result.stderr[:200])}")
